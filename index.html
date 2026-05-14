@@ -1,3 +1,4 @@
+82"}
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -8,6 +9,7 @@
 <style>
 body { font-family: Arial; background:#000; color:gold; text-align:center; }
 h1 { color:red; }
+
 .screen { display:none; }
 .active { display:block; }
 
@@ -21,12 +23,7 @@ button {
   font-weight:bold;
 }
 
-input, select {
-  padding:10px;
-  margin:5px;
-  border-radius:6px;
-  border:none;
-}
+input { padding:10px; margin:5px; }
 
 .card {
   border:1px solid gold;
@@ -42,53 +39,39 @@ input, select {
 
 <!-- HOME -->
 <div id="home" class="screen active">
-<button onclick="go('newTournament')">▶️ Nuovo Torneo</button>
-<button onclick="go('players')">👥 Giocatori</button>
-<button onclick="go('palmares')">🏆 Palmares</button>
-<button onclick="go('games')">🎮 Giochi</button>
-</div>
-
-<!-- NUOVO TORNEO -->
-<div id="newTournament" class="screen">
-<h2>Nuovo Torneo</h2>
-
-<div class="card">
-<h3>Giocatori</h3>
-<div id="selectPlayers"></div>
-</div>
-
-<div class="card">
-<h3>Giochi</h3>
-<div id="selectGames"></div>
-</div>
-
-<button onclick="startTournament()">Inizia</button>
-
-<div id="tournamentArea"></div>
-
-<button onclick="go('home')">⬅️</button>
+<button id="btnNew">▶️ Nuovo Torneo</button>
+<button id="btnPlayers">👥 Giocatori</button>
+<button id="btnPalmares">🏆 Palmares</button>
+<button id="btnGames">🎮 Giochi</button>
 </div>
 
 <!-- GIOCATORI -->
 <div id="players" class="screen">
 <input id="playerName">
-<button onclick="addPlayer()">Aggiungi</button>
+<button id="addPlayerBtn">Aggiungi</button>
 <div id="playerList"></div>
-<button onclick="go('home')">⬅️</button>
-</div>
-
-<!-- PALMARES -->
-<div id="palmares" class="screen">
-<div id="palmaresList"></div>
-<button onclick="go('home')">⬅️</button>
+<button class="back">⬅️</button>
 </div>
 
 <!-- GIOCHI -->
 <div id="games" class="screen">
 <input id="gameName">
-<button onclick="addGame()">Aggiungi Gioco</button>
+<button id="addGameBtn">Aggiungi Gioco</button>
 <div id="gamesList"></div>
-<button onclick="go('home')">⬅️</button>
+<button class="back">⬅️</button>
+</div>
+
+<!-- PALMARES -->
+<div id="palmares" class="screen">
+<div id="palmaresList"></div>
+<button class="back">⬅️</button>
+</div>
+
+<!-- TORNEO -->
+<div id="tournament" class="screen">
+<div id="tournamentArea"></div>
+<button id="finishBtn">Fine Torneo</button>
+<button class="back">⬅️</button>
 </div>
 
 <script>
@@ -98,26 +81,28 @@ let palmares = JSON.parse(localStorage.getItem("palmares")||"[]");
 
 let selectedPlayers=[];
 let selectedGames=[];
-let tournamentScores={};
+let scores={};
 
-function go(id){
+function show(id){
 document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
 document.getElementById(id).classList.add("active");
-
-if(id=="players") renderPlayers();
-if(id=="games") renderGames();
-if(id=="palmares") renderPalmares();
-if(id=="newTournament") setupTournament();
 }
 
-function addPlayer(){
+document.getElementById("btnNew").addEventListener("click",()=>startSetup());
+document.getElementById("btnPlayers").addEventListener("click",()=>{show("players");renderPlayers();});
+document.getElementById("btnGames").addEventListener("click",()=>{show("games");renderGames();});
+document.getElementById("btnPalmares").addEventListener("click",()=>{show("palmares");renderPalmares();});
+
+document.querySelectorAll(".back").forEach(b=>b.addEventListener("click",()=>show("home")));
+
+document.getElementById("addPlayerBtn").addEventListener("click",()=>{
 let n=document.getElementById("playerName").value;
 if(n){
 players.push(n);
 localStorage.setItem("players",JSON.stringify(players));
 renderPlayers();
 }
-}
+});
 
 function renderPlayers(){
 let d=document.getElementById("playerList");
@@ -125,40 +110,21 @@ d.innerHTML="";
 players.forEach(p=>d.innerHTML+=p+"<br>");
 }
 
-function addGame(){
+document.getElementById("addGameBtn").addEventListener("click",()=>{
 let g=document.getElementById("gameName").value;
 if(g){
 games.push(g);
 localStorage.setItem("games",JSON.stringify(games));
 renderGames();
 }
-}
+});
 
 function renderGames(){
 let d=document.getElementById("gamesList");
 d.innerHTML="";
 games.forEach(g=>{
-d.innerHTML+=<div class="card"><b>${g}</b><div id="stats_${g}"></div></div>;
-renderGameStats(g);
+d.innerHTML+=<div class="card">${g}</div>;
 });
-}
-
-function renderGameStats(g){
-let history=JSON.parse(localStorage.getItem("game_"+g)||"[]");
-let stats={};
-
-history.forEach(match=>{
-for(let p in match){
-stats[p]=(stats[p]||0)+match[p];
-}
-});
-
-let html="";
-for(let p in stats){
-html+=p+": "+stats[p]+" pt<br>";
-}
-
-document.getElementById("stats_"+g).innerHTML=html;
 }
 
 function renderPalmares(){
@@ -169,64 +135,33 @@ d.innerHTML+=<div class="card">Torneo ${i+1}: ${p}</div>;
 });
 }
 
-function setupTournament(){
-let pDiv=document.getElementById("selectPlayers");
-let gDiv=document.getElementById("selectGames");
-
-pDiv.innerHTML="";
-gDiv.innerHTML="";
-
-players.forEach(p=>{
-pDiv.innerHTML+=<label><input type="checkbox" value="${p}" onchange="togglePlayer(this)"> ${p}</label><br>;
-});
-
-games.forEach(g=>{
-gDiv.innerHTML+=<label><input type="checkbox" value="${g}" onchange="toggleGame(this)"> ${g}</label><br>;
-});
-}
-
-function togglePlayer(el){
-if(el.checked) selectedPlayers.push(el.value);
-else selectedPlayers=selectedPlayers.filter(p=>p!=el.value);
-}
-
-function toggleGame(el){
-if(el.checked) selectedGames.push(el.value);
-else selectedGames=selectedGames.filter(g=>g!=el.value);
-}
-
-function startTournament(){
+function startSetup(){
+show("tournament");
 let area=document.getElementById("tournamentArea");
 area.innerHTML="";
 
-tournamentScores={};
-selectedPlayers.forEach(p=>tournamentScores[p]=0);
+selectedPlayers=[...players];
+selectedGames=[...games];
+
+scores={};
+selectedPlayers.forEach(p=>scores[p]=0);
 
 selectedGames.forEach(g=>{
 area.innerHTML+=<div class="card"><h3>${g}</h3>+
 selectedPlayers.map(p=>${p}<input type="number" id="${g}_${p}" value="0"><br>).join("")+
 </div>;
 });
-
-area.innerHTML+=<button onclick="finishTournament()">Fine Torneo</button>;
 }
 
-function finishTournament(){
+document.getElementById("finishBtn").addEventListener("click",()=>{
 selectedGames.forEach(g=>{
-let match={};
-
 selectedPlayers.forEach(p=>{
-let val=parseInt(document.getElementById(g+""+p).value)||0;
-tournamentScores[p]+=val;
-match[p]=val;
+let val=parseInt(document.getElementById(g+"_"+p).value)||0;
+scores[p]+=val;
+});
 });
 
-let history=JSON.parse(localStorage.getItem("game"+g)||"[]");
-history.push(match);
-localStorage.setItem("game_"+g,JSON.stringify(history));
-});
-
-let arr=selectedPlayers.map(p=>({name:p,score:tournamentScores[p]}));
+let arr=selectedPlayers.map(p=>({name:p,score:scores[p]}));
 arr.sort((a,b)=>b.score-a.score);
 
 let winner=arr[0].name;
@@ -234,9 +169,8 @@ palmares.push(winner);
 localStorage.setItem("palmares",JSON.stringify(palmares));
 
 alert("Vincitore: "+winner);
-go("home");
-}
+show("home");
+});
 </script>
 
-</body>
-</h
+</body
