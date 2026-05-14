@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torneo Del Porcodidio</title>
+
+<style>
+body { font-family: Arial; background:#000; color:gold; text-align:center; }
+h1 { color:red; }
+.screen { display:none; }
+.active { display:block; }
+
+button {
+  padding:15px;
+  margin:10px;
+  border:none;
+  border-radius:10px;
+  background:gold;
+  width:85%;
+  font-weight:bold;
+}
+
+input, select {
+  padding:10px;
+  margin:5px;
+  border-radius:6px;
+  border:none;
+}
+
+.card {
+  border:1px solid gold;
+  margin:10px;
+  padding:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎰 Torneo Del Porcodidio</h1>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+<button onclick="go('newTournament')">▶️ Nuovo Torneo</button>
+<button onclick="go('players')">👥 Giocatori</button>
+<button onclick="go('palmares')">🏆 Palmares</button>
+<button onclick="go('games')">🎮 Giochi</button>
+</div>
+
+<!-- NUOVO TORNEO -->
+<div id="newTournament" class="screen">
+<h2>Nuovo Torneo</h2>
+
+<div class="card">
+<h3>Giocatori</h3>
+<div id="selectPlayers"></div>
+</div>
+
+<div class="card">
+<h3>Giochi</h3>
+<div id="selectGames"></div>
+</div>
+
+<button onclick="startTournament()">Inizia</button>
+
+<div id="tournamentArea"></div>
+
+<button onclick="go('home')">⬅️</button>
+</div>
+
+<!-- GIOCATORI -->
+<div id="players" class="screen">
+<input id="playerName">
+<button onclick="addPlayer()">Aggiungi</button>
+<div id="playerList"></div>
+<button onclick="go('home')">⬅️</button>
+</div>
+
+<!-- PALMARES -->
+<div id="palmares" class="screen">
+<div id="palmaresList"></div>
+<button onclick="go('home')">⬅️</button>
+</div>
+
+<!-- GIOCHI -->
+<div id="games" class="screen">
+<input id="gameName">
+<button onclick="addGame()">Aggiungi Gioco</button>
+<div id="gamesList"></div>
+<button onclick="go('home')">⬅️</button>
+</div>
+
+<script>
+let players = JSON.parse(localStorage.getItem("players")||"[]");
+let games = JSON.parse(localStorage.getItem("games")||["UNO","31","Saltacavallo","Fr0cio","Dubito","Las Vegas"]);
+let palmares = JSON.parse(localStorage.getItem("palmares")||"[]");
+
+let selectedPlayers=[];
+let selectedGames=[];
+let tournamentScores={};
+
+function go(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+
+if(id=="players") renderPlayers();
+if(id=="games") renderGames();
+if(id=="palmares") renderPalmares();
+if(id=="newTournament") setupTournament();
+}
+
+function addPlayer(){
+let n=document.getElementById("playerName").value;
+if(n){
+players.push(n);
+localStorage.setItem("players",JSON.stringify(players));
+renderPlayers();
+}
+}
+
+function renderPlayers(){
+let d=document.getElementById("playerList");
+d.innerHTML="";
+players.forEach(p=>d.innerHTML+=p+"<br>");
+}
+
+function addGame(){
+let g=document.getElementById("gameName").value;
+if(g){
+games.push(g);
+localStorage.setItem("games",JSON.stringify(games));
+renderGames();
+}
+}
+
+function renderGames(){
+let d=document.getElementById("gamesList");
+d.innerHTML="";
+games.forEach(g=>{
+d.innerHTML+=<div class="card"><b>${g}</b><div id="stats_${g}"></div></div>;
+renderGameStats(g);
+});
+}
+
+function renderGameStats(g){
+let history=JSON.parse(localStorage.getItem("game_"+g)||"[]");
+let stats={};
+
+history.forEach(match=>{
+for(let p in match){
+stats[p]=(stats[p]||0)+match[p];
+}
+});
+
+let html="";
+for(let p in stats){
+html+=p+": "+stats[p]+" pt<br>";
+}
+
+document.getElementById("stats_"+g).innerHTML=html;
+}
+
+function renderPalmares(){
+let d=document.getElementById("palmaresList");
+d.innerHTML="";
+palmares.forEach((p,i)=>{
+d.innerHTML+=<div class="card">Torneo ${i+1}: ${p}</div>;
+});
+}
+
+function setupTournament(){
+let pDiv=document.getElementById("selectPlayers");
+let gDiv=document.getElementById("selectGames");
+
+pDiv.innerHTML="";
+gDiv.innerHTML="";
+
+players.forEach(p=>{
+pDiv.innerHTML+=<label><input type="checkbox" value="${p}" onchange="togglePlayer(this)"> ${p}</label><br>;
+});
+
+games.forEach(g=>{
+gDiv.innerHTML+=<label><input type="checkbox" value="${g}" onchange="toggleGame(this)"> ${g}</label><br>;
+});
+}
+
+function togglePlayer(el){
+if(el.checked) selectedPlayers.push(el.value);
+else selectedPlayers=selectedPlayers.filter(p=>p!=el.value);
+}
+
+function toggleGame(el){
+if(el.checked) selectedGames.push(el.value);
+else selectedGames=selectedGames.filter(g=>g!=el.value);
+}
+
+function startTournament(){
+let area=document.getElementById("tournamentArea");
+area.innerHTML="";
+
+tournamentScores={};
+selectedPlayers.forEach(p=>tournamentScores[p]=0);
+
+selectedGames.forEach(g=>{
+area.innerHTML+=<div class="card"><h3>${g}</h3>+
+selectedPlayers.map(p=>${p}<input type="number" id="${g}_${p}" value="0"><br>).join("")+
+</div>;
+});
+
+area.innerHTML+=<button onclick="finishTournament()">Fine Torneo</button>;
+}
+
+function finishTournament(){
+selectedGames.forEach(g=>{
+let match={};
+
+selectedPlayers.forEach(p=>{
+let val=parseInt(document.getElementById(g+""+p).value)||0;
+tournamentScores[p]+=val;
+match[p]=val;
+});
+
+let history=JSON.parse(localStorage.getItem("game"+g)||"[]");
+history.push(match);
+localStorage.setItem("game_"+g,JSON.stringify(history));
+});
+
+let arr=selectedPlayers.map(p=>({name:p,score:tournamentScores[p]}));
+arr.sort((a,b)=>b.score-a.score);
+
+let winner=arr[0].name;
+palmares.push(winner);
+localStorage.setItem("palmares",JSON.stringify(palmares));
+
+alert("Vincitore: "+winner);
+go("home");
+}
+</script>
+
+</body>
+</h
